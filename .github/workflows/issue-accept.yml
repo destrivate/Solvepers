@@ -19,10 +19,12 @@ jobs:
           PERM=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${{ github.event.comment.user.login }}" --jq '.permission' 2>/dev/null || echo "none")
           echo "result=$PERM" >> "$GITHUB_OUTPUT"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       - uses: actions/checkout@v5
         if: steps.check.outputs.result == 'admin'
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Create file in ideas/
         if: steps.check.outputs.result == 'admin'
@@ -39,4 +41,4 @@ jobs:
           git commit -m "Add idea: ${TITLE}"
           git push
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}   
