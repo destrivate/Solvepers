@@ -24,19 +24,19 @@ jobs:
       - uses: actions/checkout@v5
         if: steps.check.outputs.result == 'admin'
 
-      - name: Create file from issue
+      - name: Create file in ideas/
         if: steps.check.outputs.result == 'admin'
         run: |
           NUMBER="${{ github.event.issue.number }}"
           TITLE=$(gh issue view "$NUMBER" --json title --jq .title)
           BODY=$(gh issue view "$NUMBER" --json body --jq .body)
           SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/---*/-/g' | sed 's/^-//' | sed 's/-$//')
-          mkdir -p issues
-          echo "$BODY" > "issues/${SLUG}.md"
+          mkdir -p ideas
+          echo "$BODY" > "ideas/${SLUG}.md"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "issues/${SLUG}.md"
-          git commit -m "Add issue: ${TITLE}"
+          git add "ideas/${SLUG}.md"
+          git commit -m "Add idea: ${TITLE}"
           git push
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
