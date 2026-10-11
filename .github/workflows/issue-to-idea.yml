@@ -5,14 +5,29 @@ name: Issue → Idea
 on:
   issues:
     types: [opened]
+  reaction:
+    types: [created]
 
 jobs:
+  welcome:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Comment
+        env:
+          NUMBER: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "$NUMBER" --body "👍 = принять в ideas/"
+
   create-idea:
+    if: github.event_name == 'reaction' && github.event.reaction.content == '+1'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: read
-
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +38,12 @@ jobs:
           NUMBER: ${{ github.event.issue.number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          IS_MAINTAINER=$(gh api "repos/${{ github.repository }}/collaborators/${{ github.event.reaction.actor.login }}" --jq '.permission' 2>/dev/null)
+          if [ "$IS_MAINTAINER" != "write" ] && [ "$IS_MAINTAINER" != "admin" ]; then
+            echo "Not a maintainer, skipping."
+            exit 0
+          fi
+
           LANG=$(echo "$TITLE" | grep -oP '\[\K[^\]]+' | tail -1)
           NAME=$(echo "$TITLE" | sed "s/\[${LANG}\]//g" | sed 's/ /_/g' | sed 's/[^a-zA-Zа-яА-ЯёЁ0-9_]//g')
 
