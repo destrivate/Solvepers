@@ -12,11 +12,19 @@ jobs:
       issues: read
 
     steps:
-      - name: Check trigger and admin
+      - name: Debug
+        run: |
+          echo "Comment: '${{ github.event.comment.body }}'"
+          echo "User: ${{ github.event.comment.user.login }}"
+          echo "Owner: ${{ github.repository_owner }}"
+          echo "Match: ${{ github.event.comment.body == '/accept' }}"
+
+      - name: Check admin
         id: check
         if: github.event.comment.body == '/accept'
         run: |
           PERM=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${{ github.event.comment.user.login }}" --jq '.permission' 2>/dev/null || echo "none")
+          echo "Permission: $PERM"
           echo "result=$PERM" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
