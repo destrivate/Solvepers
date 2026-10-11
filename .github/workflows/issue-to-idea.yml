@@ -1,0 +1,54 @@
+# .github/workflows/issue-to-idea.yml
+
+name: Issue → Idea
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  create-idea:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create idea file
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+          NUMBER: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LANG=$(echo "$TITLE" | grep -oP '\[\K[^\]]+' | tail -1)
+          NAME=$(echo "$TITLE" | sed "s/\[${LANG}\]//g" | sed 's/ /_/g' | sed 's/[^a-zA-Zа-яА-ЯёЁ0-9_]//g')
+
+          if [ -z "$LANG" ]; then
+            FILE="ideas/${NAME}.md"
+          else
+            FILE="ideas/${NAME}_${LANG}.md"
+          fi
+
+          cat > "$FILE" <<EOF
+          # ${TITLE}
+
+          **Статус:** 🟡 Work
+          **Issue:** #${NUMBER}
+
+          ## Описание
+
+          ${BODY}
+
+          ## Критерии
+
+          - [ ]
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FILE"
+          git commit -m "ideas: ${NAME} (from #${NUMBER})"
+          git push   
