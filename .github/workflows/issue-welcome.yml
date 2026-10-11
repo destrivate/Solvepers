@@ -1,4 +1,4 @@
-name: Issue Welcome
+name: Issue Comment
 
 on:
   issues:
@@ -6,13 +6,12 @@ on:
 
 jobs:
   comment:
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
+    runs-on: ubuntu-24.04 
+
     steps:
-      - name: Comment
+      - uses: actions/checkout@v4
+
+      - name: Comment on issue
+        run: gh issue comment "${{ github.event.issue.number }}" --body "👍 = accept"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NUMBER: ${{ github.event.issue.number }}
-        run: |
-          gh issue comment "$NUMBER" --body "👍 = accept"   
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
