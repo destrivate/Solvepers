@@ -11,9 +11,11 @@ jobs:
       issues: write
 
     steps:
-      - uses: actions/checkout@v5
+      - if: github.event.issue.user.login == github.repository_owner
+        uses: actions/checkout@v5
 
-      - name: Comment on issue
+      - if: github.event.issue.user.login == github.repository_owner
+        name: Comment on issue
         run: gh issue comment "${{ github.event.issue.number }}" --body "👍 = accept"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
