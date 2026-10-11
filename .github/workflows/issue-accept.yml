@@ -5,54 +5,32 @@ on:
     types: [created]
 
 jobs:
-  create-idea:
-    if: github.event.reaction.content == '+1'
-    runs-on: ubuntu-latest
+  accept:
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       issues: read
+
+    if: |
+      github.event.action == 'created' &&
+      github.event.subject_type == 'Issue' &&
+      github.event.reaction.content == 'thumbsup' &&
+      github.event.actor.login == github.repository_owner
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Create idea file
-        env:
-          TITLE: ${{ github.event.issue.title }}
-          BODY: ${{ github.event.issue.body }}
-          NUMBER: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create file from issue
         run: |
-          IS_MAINTAINER=$(gh api "repos/${{ github.repository }}/collaborators/${{ github.event.reaction.actor.login }}" --jq '.permission' 2>/dev/null)
-          if [ "$IS_MAINTAINER" != "write" ] && [ "$IS_MAINTAINER" != "admin" ]; then
-            echo "Not a maintainer, skipping."
-            exit 0
-          fi
-
-          LANG=$(echo "$TITLE" | grep -oP '\[\K[^\]]+' | tail -1)
-          NAME=$(echo "$TITLE" | sed "s/\[${LANG}\]//g" | sed 's/ /_/g' | sed 's/[^a-zA-Zа-яА-ЯёЁ0-9_]//g')
-
-          if [ -z "$LANG" ]; then
-            FILE="ideas/${NAME}.md"
-          else
-            FILE="ideas/${NAME}_${LANG}.md"
-          fi
-
-          cat > "$FILE" <<EOF
-          # ${TITLE}
-
-          **Статус:** 🟡 Work
-          **Issue:** #${NUMBER}
-
-          ## Описание
-
-          ${BODY}
-
-          ## Критерии
-
-          - [ ]
-          EOF
-
+          TITLE=$(gh issue view "${{ github.event.issue.number }}" --json title --jq .title)
+          BODY=$(gh issue view "${{ github.event.issue.number }}" --json body --jq .body)
+          SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/---*/-/g' | sed 's/^-//' | sed 's/-$//')
+          mkdir -p issues
+          echo "$BODY" > "issues/${SLUG}.md"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$FILE"
-          git commit -m "ideas: ${NAME} (from #${NUMBER})"
-          git push   
+          git add "issues/${SLUG}.md"
+          git commit -m "Add issue: ${TITLE}"
+          git push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
