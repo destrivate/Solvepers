@@ -6,10 +6,12 @@ on:
 
 jobs:
   comment:
-    runs-on: ubuntu-24.04 
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Comment on issue
         run: gh issue comment "${{ github.event.issue.number }}" --body "👍 = accept"
