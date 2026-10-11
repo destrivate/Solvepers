@@ -6,47 +6,48 @@ on:
 
 jobs:
   accept:
+    if: github.event.comment.body == '/accept'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
       issues: read
 
     steps:
-      - name: Debug
-        run: |
-          echo "Comment: '${{ github.event.comment.body }}'"
-          echo "User: ${{ github.event.comment.user.login }}"
-          echo "Owner: ${{ github.repository_owner }}"
-          echo "Match: ${{ github.event.comment.body == '/accept' }}"
-
-      - name: Check admin
+      - name: Check admin permission
         id: check
-        if: github.event.comment.body == '/accept'
         run: |
-          PERM=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${{ github.event.comment.user.login }}" --jq '.permission' 2>/dev/null || echo "none")
-          echo "Permission: $PERM"
-          echo "result=$PERM" >> "$GITHUB_OUTPUT"
+          # Используем эндпоинт /permission, он возвращает роль пользователя в репозитории
+          ROLE=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${{ github.event.comment.user.login }}/permission" --jq '.permission' 2>/dev/null || echo "none")
+          echo "User role: $ROLE"
+          echo "result=$ROLE" >> "$GITHUB_OUTPUT"
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         if: steps.check.outputs.result == 'admin'
         with:
-          token: ${{ secrets.PAT_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Create file in ideas/
         if: steps.check.outputs.result == 'admin'
         run: |
           NUMBER="${{ github.event.issue.number }}"
+          
+          # Получаем данные issue через gh cli
           TITLE=$(gh issue view "$NUMBER" --json title --jq .title)
           BODY=$(gh issue view "$NUMBER" --json body --jq .body)
+          
+          # Безопасная генерация slug
           SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/---*/-/g' | sed 's/^-//' | sed 's/-$//')
+          
           mkdir -p ideas
           echo "$BODY" > "ideas/${SLUG}.md"
+          
+          # Настройка гита и пуш
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "ideas/${SLUG}.md"
           git commit -m "Add idea: ${TITLE}"
           git push
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}   
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
